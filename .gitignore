@@ -1,0 +1,65 @@
+# Ignore all files
+*
+
+# Uningnore files with extensions and makefile
+!*.*
+!Makefile
+
+# Uningnore directories
+!*/
+
+# *.pdf
+*.Identifier
+*.tgz
+
+# C extensions
+*.so
+*.o
+
+# Distribution / packaging
+env/
+build/
+bin/
+obj/
+develop-eggs/
+dist/
+legacy/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+tests/[Tt]ests
+report/
+report.*
+
+# Translations
+*.mo
+*.pot
+
+# huge XML file
+assets/dblp*
+
+# Sphinx documentation
+docs/_build/
+
+# VS Code
+.vscode
+
+# VS
+.vs/
