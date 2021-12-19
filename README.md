@@ -4,7 +4,7 @@
 
 1. [What this is](#what-this-is)
 2. [Table of contents](#table-of-contents)
-   1. ["gestion de fichiers"](#gestion-de-fichiers)
+   1. [gestion de fichiers](#gestion-de-fichiers)
    2. [TP 1](#tp-1)
 3. [Changelog and TODO](#changelog-and-todo)
 
@@ -14,7 +14,7 @@ This repo contains some elements of correction for diverse exercises and practic
 
 ## Table of contents
 
-### "gestion de fichiers"
+### gestion de fichiers
 
 *   `copy.c` : 5.4
 *   `getchar.c` : 5.5
