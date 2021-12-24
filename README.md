@@ -6,7 +6,8 @@
 2. [Table of contents](#table-of-contents)
    1. [gestion de fichiers](#gestion-de-fichiers)
    2. [TP 1](#tp-1)
-3. [Changelog and TODO](#changelog-and-todo)
+3. [Contributing](#contributing)
+4. [Changelog and TODO](#changelog-and-todo)
 
 ## What this is
 
@@ -23,6 +24,10 @@ This repo contains some elements of correction for diverse exercises and practic
 ### TP 1
 
 `compare.c` (similar behavior as `cmp` bash command)
+
+## Contributing
+
+If you want some correction, simply submit a pull request with the name of the exercise as shown above. If you want to submit one, please be sure it was first seen in class and that the official submit deadline is passed. Also try to be consistent in the coding style.
 
 ## Changelog and TODO
 
