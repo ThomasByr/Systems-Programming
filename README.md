@@ -1,6 +1,6 @@
 # Systems programming
 
-> [crash course](https://moodle.unistra.fr/course/view.php?id=1588) by [Pierre David](pda@unistra.fr)
+> [crash course](https://moodle.unistra.fr/course/view.php?id=1588) by Pierre David
 
 1. [What this is](#what-this-is)
 2. [Table of contents](#table-of-contents)
@@ -20,6 +20,9 @@ This repo contains some elements of correction for diverse exercises and practic
 *   `copy.c` : 5.4
 *   `getchar.c` : 5.5
 *   `getchar_b.c` : 5.6 (same as previous but with buffer)
+*   `listing.c` : 5.8
+*   `dir.c` : 5.10
+*   `which.c` : 5.14
 
 ### TP 1
 
