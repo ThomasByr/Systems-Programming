@@ -35,8 +35,9 @@ noreturn void raler(int syserr, const char *msg, ...) {
 
 int pattern_in_buf(const char *pattern, const char *buf) {
     size_t len = strlen(pattern);
+    size_t n = strlen(buf);
     size_t i, j;
-    for (i = 0; i < strlen(buf); i++) {
+    for (i = 0; i < n; i++) {
         if (buf[i] == pattern[0]) {
             for (j = 0; j < len; j++) {
                 if (buf[i + j] != pattern[j])
