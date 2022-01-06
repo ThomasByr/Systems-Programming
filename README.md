@@ -22,6 +22,7 @@ This repo contains some elements of correction for diverse exercises and practic
 *   `getchar_b.c` : 5.6 (same as previous but with buffer)
 *   `listing.c` : 5.8
 *   `dir.c` : 5.10
+*   `seek.c` : 5.13 (bonus)
 *   `which.c` : 5.14
 
 ### TP 1
