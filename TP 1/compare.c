@@ -76,26 +76,20 @@ ssize_t count_nl(const unsigned char *buf, ssize_t size) {
 int compare(int fd1, int fd2, const char *filename1, const char *filename2) {
     unsigned char buf1[BUFSIZE];
     unsigned char buf2[BUFSIZE];
-    ssize_t nread1, nread2;
+    ssize_t nread1 = -1, nread2 = -1;
     ssize_t bytes_read = 0;  // number of bytes read from the file
     ssize_t line_number = 1; // number of the line (starts from 1)
 
-    while (1) {
+    while (!(nread1 == 0 && nread2 == 0)) {
         CHK(nread1 = read(fd1, buf1, BUFSIZE));
         CHK(nread2 = read(fd2, buf2, BUFSIZE));
 
         // if we reached the end of the file at the beginning
-        if (bytes_read == 0 && nread1 == 0 && nread2 != 0) {
-            fprintf(stderr, "EOF on %s which is empty\n", filename1);
-            return 1;
-        } else if (bytes_read == 0 && nread1 != 0 && nread2 == 0) {
-            fprintf(stderr, "EOF on %s which is empty\n", filename2);
+        if (bytes_read == 0 && nread1 * nread2 == 0 && nread1 != nread2) {
+            fprintf(stderr, "EOF on %s which is empty\n",
+                    nread1 == 0 ? filename1 : filename2);
             return 1;
         }
-
-        // end of files
-        if (nread1 == 0 && nread2 == 0)
-            break;
 
         // assume buffers are not the same length
         ssize_t shorter = // shorter buffer size
@@ -137,8 +131,7 @@ int main(int argc, char *argv[]) {
 
     // because argv[0] is always defined
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s file1 file2\n", argv[0]);
-        return EXIT_FAILURE;
+        raler(0, "Usage: %s file1 file2", argv[0]);
     }
 
     CHK(fd1 = open(argv[1], O_RDONLY));
