@@ -31,7 +31,7 @@ This repo contains some elements of correction for diverse exercises and practic
 *   `simple_fork.c` : 6.1
 *   `multiple_fork.c` : 6.2
 *   `open_fork.` : 6.4
-*   `maxval.c` : last year's tp2
+*   `maxval.c` : last year's tp2 (currently unrevised)
 
 ### TP 1
 
