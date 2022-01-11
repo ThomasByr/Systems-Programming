@@ -16,7 +16,7 @@
 #include <wait.h>
 
 #define MAXSIZ 1 << 10
-#define ct char // custom type
+#define c_t char // custom type
 
 #define CHK(op)               \
     do {                      \
@@ -38,7 +38,7 @@ noreturn void complain(int syserr, const char *msg, ...) {
     exit(EXIT_FAILURE);
 }
 
-int make_arr(int fd, ct *arr) {
+int make_arr(int fd, c_t *arr) {
     // file format : byte, byte, byte, ...
     // return the number of numbers in the file
 
@@ -49,7 +49,7 @@ int make_arr(int fd, ct *arr) {
         char *p = buf;
         int i = 0;
         while (p < buf + n) {
-            ct x = 0;
+            c_t x = 0;
             while (*p != ',' && *p != ' ' && *p != '\n' && p < buf + n)
                 x = x * 10 + *p++ - '0';
             arr[i++] = x;
@@ -61,8 +61,8 @@ int make_arr(int fd, ct *arr) {
     return count;
 }
 
-ct find_max(ct *arr, int i, int j) {
-    ct max = arr[i];
+c_t find_max(c_t *arr, int i, int j) {
+    c_t max = arr[i];
     for (int k = i; k < j; k++)
         if (arr[k] > max)
             max = arr[k];
@@ -80,10 +80,10 @@ int main(int argc, char *argv[]) {
     int fd = open(path, O_RDONLY);
     CHK(fd);
 
-    ct arr[MAXSIZ] = {0};
+    c_t arr[MAXSIZ] = {0};
     int n = make_arr(fd, arr);
 
-    ct max = 0;
+    c_t max = 0;
     // divide the array into chunks of size at most max_chunk_size
     // and find the maximum in each chunk
     // all the chunks are processed in parallel
