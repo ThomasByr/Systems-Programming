@@ -5,7 +5,8 @@
 1. [What this is](#what-this-is)
 2. [Table of contents](#table-of-contents)
    1. [gestion de fichiers](#gestion-de-fichiers)
-   2. [TP 1](#tp-1)
+   2. [gestion des processus](#gestion-des-processus)
+   3. [TP 1](#tp-1)
 3. [Contributing](#contributing)
 4. [Changelog and TODO](#changelog-and-todo)
 
@@ -24,6 +25,13 @@ This repo contains some elements of correction for diverse exercises and practic
 *   `dir.c` : 5.10
 *   `seek.c` : 5.13 (bonus)
 *   `which.c` : 5.14
+
+### gestion des processus
+
+*   `simple_fork.c` : 6.1
+*   `multiple_fork.c` : 6.2
+*   `open_fork.` : 6.4
+*   `maxval.c` : last year's tp2
 
 ### TP 1
 
