@@ -71,7 +71,7 @@ c_t find_max(c_t *arr, int i, int j) {
 
 int main(int argc, char *argv[]) {
     pid_t pid;
-    int reason;
+    int status;
 
     if (argc != 3)
         complain(0, "Usage: %s <max_chunk_size> <filename>\n", argv[0]);
@@ -108,11 +108,11 @@ int main(int argc, char *argv[]) {
 
     CHK(close(fd));
     for (int i = 0; i < n; i += max_chunk_size) {
-        CHK(wait(&reason));
-        if (WIFEXITED(reason) && WEXITSTATUS(reason) > max)
-            max = WEXITSTATUS(reason);
-        else if (WIFSIGNALED(reason))
-            complain(0, "child terminated by signal %d\n", WTERMSIG(reason));
+        CHK(wait(&status));
+        if (WIFEXITED(status) && WEXITSTATUS(status) > max)
+            max = WEXITSTATUS(status);
+        else if (WIFSIGNALED(status))
+            complain(0, "child terminated by signal %d\n", WTERMSIG(status));
     }
     printf("%jd\n", (intmax_t)max);
     return 0;

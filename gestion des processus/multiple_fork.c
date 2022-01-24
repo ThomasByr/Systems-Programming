@@ -42,7 +42,7 @@ int child(void) {
 
 int main(int argc, char *argv[]) {
     pid_t pid;
-    int reason;
+    int status;
 
     if (argc != 2)
         complain(0, "Usage: %s <positive integer>\n", argv[0]);
@@ -64,14 +64,14 @@ int main(int argc, char *argv[]) {
 
     // wait for all child processes to terminate
     for (int i = 0; i < n; i++) {
-        CHK(wait(&reason));
+        CHK(wait(&status));
 
-        if (WIFEXITED(reason))
-            printf("exit(%d)\n", WEXITSTATUS(reason));
-        else if (WIFSIGNALED(reason))
-            printf("signal %d\n", WTERMSIG(reason));
+        if (WIFEXITED(status))
+            printf("exit(%d)\n", WEXITSTATUS(status));
+        else if (WIFSIGNALED(status))
+            printf("signal %d\n", WTERMSIG(status));
         else
-            printf("other reason");
+            printf("other status");
     }
     return 0;
 }

@@ -37,7 +37,7 @@ noreturn void complain(int syserr, const char *msg, ...) {
 
 int main(int argc, char *argv[]) {
     pid_t pid;
-    int reason;
+    int status;
 
     if (argc != 2)
         complain(0, "Usage: %s <path to file>\n", argv[0]);
@@ -73,14 +73,14 @@ int main(int argc, char *argv[]) {
         CHK(n);
         CHK(close(fd));
 
-        CHK(wait(&reason));
+        CHK(wait(&status));
         printf("\033[0m\n");
-        if (WIFEXITED(reason))
-            printf("exit(%d)\n", WEXITSTATUS(reason));
-        else if (WIFSIGNALED(reason))
-            printf("signal %d\n", WTERMSIG(reason));
+        if (WIFEXITED(status))
+            printf("exit(%d)\n", WEXITSTATUS(status));
+        else if (WIFSIGNALED(status))
+            printf("signal %d\n", WTERMSIG(status));
         else
-            printf("other reason\n");
+            printf("other status\n");
 
         return 0;
     }

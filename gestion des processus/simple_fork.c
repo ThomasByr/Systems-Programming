@@ -37,7 +37,7 @@ noreturn void complain(int syserr, const char *msg, ...) {
 
 int main(void) {
     pid_t pid;
-    int reason;
+    int status;
 
     // create a child process
     pid = fork();
@@ -60,14 +60,14 @@ int main(void) {
         printf("Parent process\n");
         printf("Parent process id: %jd\n", (intmax_t)getpid());
         printf("Parent process child id: %jd\n", (intmax_t)pid);
-        CHK(wait(&reason));
+        CHK(wait(&status));
 
-        if (WIFEXITED(reason))
-            printf("exit(%d)\n", WEXITSTATUS(reason));
-        else if (WIFSIGNALED(reason))
-            printf("signal %d\n", WTERMSIG(reason));
+        if (WIFEXITED(status))
+            printf("exit(%d)\n", WEXITSTATUS(status));
+        else if (WIFSIGNALED(status))
+            printf("signal %d\n", WTERMSIG(status));
         else
-            printf("other reason");
+            printf("other status");
         return 0;
     }
 }
