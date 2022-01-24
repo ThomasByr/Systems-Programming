@@ -32,6 +32,8 @@ This repo contains some elements of correction for diverse exercises and practic
 *   `multiple_fork.c` : 6.2
 *   `open_fork.` : 6.4
 *   `maxval.c` : last year's tp2 (currently unrevised)
+*   `gettime.c` : 6.6
+*   `rand.c` : 6.8
 
 ### TP 1
 
