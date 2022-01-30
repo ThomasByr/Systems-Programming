@@ -6,7 +6,8 @@
 2. [Table of contents](#table-of-contents)
    1. [gestion de fichiers](#gestion-de-fichiers)
    2. [gestion des processus](#gestion-des-processus)
-   3. [TP 1](#tp-1)
+   3. [gestion des signaux](#gestion-des-signaux)
+   4. [TP 1](#tp-1)
 3. [Contributing](#contributing)
 4. [Changelog and TODO](#changelog-and-todo)
 
@@ -34,6 +35,11 @@ This repo contains some elements of correction for diverse exercises and practic
 *   `maxval.c` : last year's tp2 (currently unrevised)
 *   `gettime.c` : 6.6
 *   `rand.c` : 6.8
+
+### gestion des signaux
+
+*  `count_signint.c` : 9.1
+*  `display_signal.c` : 9.3
 
 ### TP 1
 
