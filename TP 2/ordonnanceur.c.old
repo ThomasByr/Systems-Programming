@@ -1,0 +1,317 @@
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <fnmatch.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdnoreturn.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
+#include <wait.h>
+
+#define CHK(op)            \
+    do {                   \
+        if ((op) == -1)    \
+            alert(1, #op); \
+    } while (0)
+
+noreturn void alert(int syserr, const char *msg, ...) {
+    va_list ap;
+
+    va_start(ap, msg);
+    vfprintf(stderr, msg, ap);
+    fprintf(stderr, "\n");
+    va_end(ap);
+
+    if (syserr == 1)
+        perror("");
+
+    exit(EXIT_FAILURE);
+}
+
+struct process_info_s {
+    long no_q;  // total number of quantum
+    long count; // number of quantum processed
+
+    // 0: pending, 1: running, 2: terminated
+    volatile sig_atomic_t status;
+    // 0: nothing, 1: terminate, 2: suspend, 3: resume
+    volatile sig_atomic_t action;
+};
+typedef struct process_info_s process_info_t;
+
+volatile sig_atomic_t stop = 0;
+volatile sig_atomic_t count = 0;
+volatile sig_atomic_t total = 0;
+
+volatile sig_atomic_t tick = 0;
+volatile sig_atomic_t donned = 0;
+volatile sig_atomic_t child_term = 0;
+volatile sig_atomic_t term_count = 0;
+
+/**
+ * @brief initialize the process info for a given number of quantum
+ *
+ * @param info process info to initialize
+ * @param no_q number of quantum
+ * @param pid process id of the child process
+ * @param ppid process id of the parent process (which called fork)
+ */
+void process_info_init(process_info_t *info, int no_q) {
+    info->no_q = no_q;
+    info->count = 0;
+
+    info->status = 0;
+    info->action = 0;
+}
+
+void child_on_term(int sig) {
+    (void)sig;
+
+    // send SIGCHLD to the parent process
+    kill(getppid(), SIGCHLD);
+    stop = 1;
+
+    // next instruction should now be exit(EXIT_SUCCESS) in the main function
+}
+
+void child_on_start(int sig) {
+    (void)sig;
+
+    // make the child process do something
+    while (!stop) {
+        sleep(1);
+        count++;
+    }
+}
+
+void child_on_stop(int sig) {
+    (void)sig;
+
+    // send SIGUSR1 to the parent process
+    kill(getppid(), SIGUSR1);
+    stop = 1;
+
+    if (count == total) {
+        child_on_term(0);
+    }
+
+    pause(); // wait for the parent process to send SIGUSR1
+}
+
+/**
+ * @brief generic handler for child process
+ *
+ * @param sig signal received
+ */
+void child_sig_handler(int sig) {
+    switch (sig) {
+    case SIGUSR1:
+        child_on_start(sig);
+        break;
+    case SIGUSR2:
+        child_on_stop(sig);
+        break;
+    }
+}
+
+/**
+ * @brief behavior of the child process when it is running
+ *
+ */
+void child_on_launch(void) {
+
+    // modify actions regarding signals
+    struct sigaction sa;
+    sa.sa_handler = child_sig_handler;
+    sa.sa_flags = 0;
+
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGUSR1, &sa, NULL); // begin of quantum
+    sigaction(SIGUSR2, &sa, NULL); // end of quantum
+}
+
+/**
+ * @brief initially launch a child process for a given number of quantum
+ *
+ */
+void child_process(int total_q) {
+    total = total_q;   // set the total number of quantum
+    child_on_launch(); // launch the child process
+    pause();           // wait for the parent process to send SIGUSR1
+}
+
+void parend_on_child_term(int sig) {
+    (void)sig;
+
+    // child process terminated
+    child_term = 1;
+    term_count++;
+}
+
+void parent_on_alarm(int sig) {
+    (void)sig;
+
+    // process quantum
+    tick = 1;
+}
+
+void parent_on_child_stop(int sig) {
+    (void)sig;
+
+    // child process has successfully stopped
+    donned = 1;
+}
+
+/**
+ * @brief generic handler for parent process
+ *
+ * @param sig signal received
+ */
+void parent_sig_handler(int sig) {
+    switch (sig) {
+    case SIGALRM:
+        parent_on_alarm(sig);
+        break;
+    case SIGUSR1:
+        parent_on_child_stop(sig);
+        break;
+    case SIGCHLD:
+        parend_on_child_term(sig);
+        break;
+    }
+}
+
+int _get_next_valid_process(process_info_t *info, int no_p, int curr) {
+    int k = 0;
+    int i = curr + 1;
+    int found = 0;
+    while (!found) {
+        k++;
+        i = (i + 1) % no_p;
+        long no_q = info[i].no_q;   // total number of quatum of the process
+        long count = info[i].count; // number of quantum processed
+        if (no_q > 0 && count < no_q) {
+            found = 1;
+        } // we found a process that has not finished running all its quantum
+        if (!found && k == 3 * no_p) {
+            found = 1;
+            i = -1;
+        } // we tried to find a process but we failed
+    }
+    return i;
+}
+
+int main(int argc, char *argv[]) {
+    // usage: ./ordonnanceur <quantum in seconds> <number of quantum> <...>
+
+    pid_t pid;
+    int status;
+    int n = argc - 2;
+
+    // check number of arguments
+    if (argc <= 2)
+        alert(0, "usage: %s <t> t1 [t2] [t3] ...", argv[0]);
+
+    // check for values
+    long t = strtol(argv[1], NULL, 10);
+    if (t <= 0)
+        alert(0, "t must be a positive integer");
+
+    // array that holds each process time to be used in the scheduler
+    long *t_array = malloc(sizeof(long) * n);
+
+    // array that holds each process information
+    process_info_t *info_array = malloc(sizeof(process_info_t) * n);
+
+    // array that holds each process pid
+    pid_t *pid_array = malloc(sizeof(pid_t) * n);
+
+    // check for values
+    for (int i = 2; i < argc; i++) {
+        long ti = strtol(argv[i], NULL, 10);
+        if (ti <= 0) {
+            free(t_array);
+            alert(0, "t%d must be a positive integer", i);
+        }
+        t_array[i - 2] = ti;
+    }
+
+    // initialize the process info
+    for (int i = 0; i < n; i++) {
+        process_info_init(&info_array[i], t_array[i]);
+    }
+    free(t_array); // no longer needed
+
+    // launch the child processes
+    for (int i = 0; i < n; i++) {
+        switch ((pid = fork())) {
+
+        case -1:
+            alert(1, "fork");
+
+        case 0:
+            child_process(info_array[i].no_q);
+            free(pid_array);
+            free(info_array);
+            exit(EXIT_SUCCESS);
+
+        default:
+            pid_array[i] = pid;
+            break;
+        }
+    }
+
+    // interract with the child processes
+    struct sigaction sa;
+    sa.sa_handler = parent_sig_handler;
+    sa.sa_flags = 0;
+    sigaction(SIGALRM, &sa, NULL); // each quantum
+    sigaction(SIGUSR1, &sa, NULL); // record suspend of child process
+    sigaction(SIGCHLD, &sa, NULL); // record termination of child process
+
+    // wait for the child processes to terminate
+    int curr = 0; // current child process
+    while (term_count < n) {
+        pid_t p = pid_array[curr];   // get the child process pid
+        kill(p, SIGUSR1);            // send SIGUSR1 to the child process
+        info_array[curr].status = 1; // process is running
+        alarm(t);                    // set the alarm for the next quantum
+
+        while (!tick)
+            pause(); // wait for SIGALRM
+
+        tick = 0;
+        kill(p, SIGUSR2); // send SIGUSR2 to the child process
+
+        while (!donned)
+            pause(); // wait for SIGUSR1
+
+        donned = 0;
+        info_array[curr].status = 0; // process is stopped
+        info_array[curr].count++;    // increment number of quantum processed
+
+        // get next valid child process
+        curr = _get_next_valid_process(info_array, n, curr);
+    }
+
+    // register the child processes
+    for (int i = 0; i < n; i++) {
+        CHK((pid = wait(&status)));
+
+        if (WIFEXITED(status)) {
+            int exit_status = WEXITSTATUS(status);
+            if (exit_status != EXIT_SUCCESS)
+                fprintf(stderr, "child process %jd exited with status %d\n",
+                        (intmax_t)pid, exit_status);
+        }
+    }
+}
