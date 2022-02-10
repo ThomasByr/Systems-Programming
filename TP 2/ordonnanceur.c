@@ -44,6 +44,8 @@ struct env_s {
 };
 typedef struct env_s env_t;
 
+// global variables
+
 volatile sig_atomic_t received = 0; // signal received
 
 // globals for child processes
@@ -114,7 +116,16 @@ void child_on_startup(int t, int i) {
  * @brief things to do when the child process has terminated
  *
  */
-void child_on_exit(void) { CHK(kill(getppid(), SIGCHLD)); }
+void child_on_exit(void) {
+    if (total != count)
+        alert(0, "process %d terminated before all quantum processed", id);
+}
+
+/**
+ * @brief sleep(1)
+ *
+ */
+void do_something(void) { sleep(1); }
 
 /**
  * @brief child process main loop
@@ -133,8 +144,11 @@ void child_main_loop(void) {
     while (count < total) {
 
         // wait for signal
-        while (!received)
+        while (!received) {
             sigsuspend(&empty);
+            if (errno != EINTR)
+                alert(1, "sigsuspend");
+        }
 
         received = 0;
 
@@ -150,7 +164,7 @@ void child_main_loop(void) {
             while (status == 1) {
                 if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
                     alert(1, "sigprocmask on mask unblock");
-                sleep(1);
+                do_something();
                 if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
                     alert(1, "sigprocmask on mask block");
             }
@@ -214,8 +228,11 @@ void parent_main_loop(env_t *env) {
         }
 
         // wait for signal
-        while (!received)
+        while (!received) {
             sigsuspend(&empty);
+            if (errno != EINTR)
+                alert(1, "sigsuspend");
+        }
 
         received = 0;
 
@@ -245,22 +262,19 @@ void parent_main_loop(env_t *env) {
         case 3: // SIGCHLD
             CHK((pid = wait(&status)));
             k = set_term(pids, pid, nb_p);
-
             if (k == -1)
                 alert(0, "pid not found");
 
+            // the process has terminated
             term_count++;
             fprintf(stdout, "TERM - process %d\n", k);
             fflush(stdout);
 
-            if (WIFEXITED(status)) {
-                exit_status = WEXITSTATUS(status);
-                if (exit_status != EXIT_SUCCESS) {
-                    fprintf(stderr, "child process %jd exited with status %d\n",
-                            (intmax_t)pid, exit_status);
-                    exit(EXIT_FAILURE);
-                }
-            }
+            // check the exit code of the process
+            if (WIFEXITED(status) &&
+                (exit_status = WEXITSTATUS(status)) != EXIT_SUCCESS)
+                alert(0, "child process %jd exited with status %d\n",
+                      (intmax_t)pid, exit_status);
 
             break;
         }
