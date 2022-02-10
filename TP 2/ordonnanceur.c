@@ -298,9 +298,13 @@ int main(int argc, char *argv[]) {
 
     // array that holds each process time to be used in the scheduler
     long *t_array = malloc(sizeof(long) * n);
+    if (t_array == NULL)
+        alert(0, "malloc");
 
     // array that holds each process pid
     pid_t *pid_array = malloc(sizeof(pid_t) * n);
+    if (pid_array == NULL)
+        alert(0, "malloc");
 
     // check for values
     for (int i = 2; i < argc; i++) {
