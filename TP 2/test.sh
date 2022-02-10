@@ -247,7 +247,7 @@ test_4 ()
 test_5()
 {
     echo -n "Test 5 - test mémoire..............................."
-    valgrind --leak-check=full --trace-children=yes --error-exitcode=100 $PROG >/dev/null 2> $TMP/stderr
+    valgrind --leak-check=full --trace-children=yes --error-exitcode=100 $PROG 2 3 2 >/dev/null 2> $TMP/stderr
     test $? = 100 && echo "échec => log de valgrind dans $TMP/stderr" && return 1
     echo "OK"
 

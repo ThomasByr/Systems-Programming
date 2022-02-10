@@ -255,7 +255,7 @@ void parent_main_loop(env_t *env) {
             do {
                 count++;
                 index = (index + 1) % nb_p;
-            } while (pids[index] == -1 && count < 3 * nb_p);
+            } while (pids[index] == -1 && count < nb_p);
             tick = 0;
             break;
 

@@ -8,7 +8,7 @@ CC = gcc
 PROG = ordonnanceur
 CHRONO = chrono
 
-CFLAGS = -march=znver3 -O2 -pipe -g -Wall -Wextra -Wpedantic -Werror # obligatoires
+CFLAGS = -march=znver3 -Ofast -pipe -g -Wall -Wextra -Wpedantic -Werror # obligatoires
 
 .PHONY: all clean
 
