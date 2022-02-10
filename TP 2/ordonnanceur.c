@@ -154,8 +154,10 @@ void child_main_loop(void) {
 
         // process the signal
         switch (status) {
+
         case 0: // do nothing
             break;
+
         case 1: // process running
             count++;
             fprintf(stdout, "SURP - process %d\n", id);
