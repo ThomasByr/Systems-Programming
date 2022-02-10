@@ -80,22 +80,19 @@ void env_init(env_t *env, long qt, pid_t *pids, int nb_processes) {
  * @param sig signal number received
  */
 void sig_handler(int sig) {
+    received = 1;
     switch (sig) {
-    case SIGUSR1:     // shared between parent and child
-        received = 1; //
-        status = 1;   // [child] send the process running
-        tick = 2;     // [parent]
+    case SIGUSR1:   // shared between parent and child
+        status = 1; // [child] send the process running
+        tick = 2;   // [parent]
         break;
-    case SIGUSR2:     // only for child
-        received = 1; //
-        status = 0;   // [child] make the process stop
+    case SIGUSR2:   // only for child
+        status = 0; // [child] make the process stop
         break;
     case SIGALRM: // only for parent
-        received = 1;
         tick = 1; // [parent]
         break;
     case SIGCHLD: // only for parent
-        received = 1;
         tick = 3; // [parent]
         break;
     }
@@ -138,17 +135,22 @@ void child_main_loop(void) {
     CHK(sigaddset(&mask, SIGUSR1));
     CHK(sigaddset(&mask, SIGUSR2));
 
-    if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
-        alert(1, "sigprocmask on mask block");
-
     while (count < total) {
+
+        // block signals
+        if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
+            alert(1, "sigprocmask on mask block");
 
         // wait for signal
         while (!received) {
             sigsuspend(&empty);
             if (errno != EINTR)
                 alert(1, "sigsuspend");
-        }
+        } // could be an if statement but the kernel seems not to like it
+
+        // unblock signals
+        if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
+            alert(1, "sigprocmask on mask unblock");
 
         received = 0;
 
@@ -217,9 +219,6 @@ void parent_main_loop(env_t *env) {
     CHK(sigaddset(&mask, SIGUSR1));
     CHK(sigaddset(&mask, SIGCHLD));
 
-    if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
-        alert(1, "sigprocmask on mask block");
-
     int index = 0;
     while (term_count < nb_p) {
 
@@ -229,12 +228,20 @@ void parent_main_loop(env_t *env) {
             alarm(qt);
         }
 
+        // block signals
+        if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
+            alert(1, "sigprocmask on mask block");
+
         // wait for signal
         while (!received) {
             sigsuspend(&empty);
             if (errno != EINTR)
                 alert(1, "sigsuspend");
-        }
+        } // could be an if statement but the kernel seems not to like it
+
+        // unblock signals
+        if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
+            alert(1, "sigprocmask on mask unblock");
 
         received = 0;
 
@@ -258,7 +265,7 @@ void parent_main_loop(env_t *env) {
                 count++;
                 index = (index + 1) % nb_p;
             } while (pids[index] == -1 && count < nb_p);
-            tick = 0;
+            tick = 0; // only reset here to send a process running
             break;
 
         case 3: // SIGCHLD
@@ -353,7 +360,7 @@ int main(int argc, char *argv[]) {
     free(t_array); // we should not use that anymore
     t_array = NULL;
 
-    // modify the signal handlers for the parent process
+    // modify the signal handled for the parent process
     CHK(sigaction(SIGCHLD, &act, NULL));
     CHK(sigaction(SIGALRM, &act, NULL));
 
@@ -361,7 +368,7 @@ int main(int argc, char *argv[]) {
     parent_main_loop(&env);
 
     // we already registered terminated processes with wait in the parent main
-    // loop so we can just exit
+    // loop so we can just exit and free the remaining pid array
 
     // free
     free(pid_array);
