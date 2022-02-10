@@ -48,16 +48,18 @@ typedef struct env_s env_t;
 
 volatile sig_atomic_t received = 0; // signal received
 
+// [child] 0: pending, 1: running
+// [parent] 0: nothing, 1: tick, 2: donned, 3: child terminated
+volatile sig_atomic_t status = 0;
+
 // globals for child processes
 
-volatile sig_atomic_t status = 0; // 0: pending, 1: running
-volatile sig_atomic_t count = 0;  // number of quantum processed
-volatile sig_atomic_t total = 0;  // total number of quantum to process
-volatile int id = 0;              // id of the current process
+volatile sig_atomic_t count = 0; // number of quantum processed
+volatile sig_atomic_t total = 0; // total number of quantum to process
+volatile int id = 0;             // id of the current process
 
 // globals for parent process
 
-volatile sig_atomic_t tick = 0;       // 1: tick, 2: donned, 3: child_term
 volatile sig_atomic_t term_count = 0; // number of terminated child processes
 
 /**
@@ -75,25 +77,38 @@ void env_init(env_t *env, long qt, pid_t *pids, int nb_processes) {
 }
 
 /**
- * @brief generic function to handle signals
+ * @brief generic function to handle signals for the child processes
  *
  * @param sig signal number received
  */
-void sig_handler(int sig) {
+void child_sig_handler(int sig) {
     received = 1;
     switch (sig) {
-    case SIGUSR1:   // shared between parent and child
-        status = 1; // [child] send the process running
-        tick = 2;   // [parent]
+    case SIGUSR1:
+        status = 1; // [child] resume process
         break;
-    case SIGUSR2:   // only for child
+    case SIGUSR2:
         status = 0; // [child] make the process stop
         break;
-    case SIGALRM: // only for parent
-        tick = 1; // [parent]
+    }
+}
+
+/**
+ * @brief generic function to handle signals for the parent processes
+ *
+ * @param sig signal number received
+ */
+void parent_sig_handler(int sig) {
+    received = 1;
+    switch (sig) {
+    case SIGUSR1:
+        status = 2; // [parent] record the pending process
         break;
-    case SIGCHLD: // only for parent
-        tick = 3; // [parent]
+    case SIGALRM:
+        status = 1; // [parent] send the process running
+        break;
+    case SIGCHLD:
+        status = 3; // [parent] record the terminated process
         break;
     }
 }
@@ -207,7 +222,7 @@ void parent_main_loop(env_t *env) {
     int qt = (int)env->qt;
     pid_t *pids = env->pids;
     pid_t pid;
-    int status, exit_status;
+    int exit_status, exit_code;
     int count;
     int k;
     int nb_p = env->nb_processes;
@@ -222,7 +237,7 @@ void parent_main_loop(env_t *env) {
     int index = 0;
     while (term_count < nb_p) {
 
-        if (tick == 0) {
+        if (status == 0) {
             // send a process running
             CHK(kill(pids[index], SIGUSR1));
             alarm(qt);
@@ -246,7 +261,7 @@ void parent_main_loop(env_t *env) {
         received = 0;
 
         // process the signal
-        switch (tick) {
+        switch (status) {
 
         case 0: // do nothing
             break;
@@ -265,11 +280,11 @@ void parent_main_loop(env_t *env) {
                 count++;
                 index = (index + 1) % nb_p;
             } while (pids[index] == -1 && count < nb_p);
-            tick = 0; // only reset here to send a process running
+            status = 0; // only reset here to send a process running
             break;
 
         case 3: // SIGCHLD
-            CHK((pid = wait(&status)));
+            CHK((pid = wait(&exit_status)));
             k = set_term(pids, pid, nb_p);
             if (k == -1)
                 alert(0, "pid not found");
@@ -280,10 +295,10 @@ void parent_main_loop(env_t *env) {
             fflush(stdout);
 
             // check the exit code of the process
-            if (WIFEXITED(status) &&
-                (exit_status = WEXITSTATUS(status)) != EXIT_SUCCESS)
+            if (WIFEXITED(exit_status) &&
+                (exit_code = WEXITSTATUS(exit_status)) != EXIT_SUCCESS)
                 alert(0, "child process %jd exited with status %d\n",
-                      (intmax_t)pid, exit_status);
+                      (intmax_t)pid, exit_code);
 
             break;
         }
@@ -327,7 +342,7 @@ int main(int argc, char *argv[]) {
 
     // initialize the signal handler for the child processes
     struct sigaction act;
-    act.sa_handler = sig_handler;
+    act.sa_handler = child_sig_handler;
     act.sa_flags = 0;
     CHK(sigemptyset(&act.sa_mask));
     CHK(sigaction(SIGUSR1, &act, NULL));
@@ -360,7 +375,9 @@ int main(int argc, char *argv[]) {
     free(t_array); // we should not use that anymore
     t_array = NULL;
 
-    // modify the signal handled for the parent process
+    // modify the signal handler for the parent process
+    act.sa_handler = parent_sig_handler;
+    CHK(sigaction(SIGUSR1, &act, NULL));
     CHK(sigaction(SIGCHLD, &act, NULL));
     CHK(sigaction(SIGALRM, &act, NULL));
 
