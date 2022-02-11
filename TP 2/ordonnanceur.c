@@ -116,7 +116,7 @@ void parent_sig_handler(int sig) {
         tick = 1;
         break;
     case SIGCHLD:
-        status = 3; // [parent] record the terminated process
+        status = 3; // [parent] record the terminated process(es)
         term++;
         break;
     }
@@ -166,11 +166,11 @@ void child_main_loop(void) {
             alert(1, "sigprocmask on mask block");
 
         // wait for signal
-        while (!received) {
+        if (!received) {
             sigsuspend(&empty);
             if (errno != EINTR)
                 alert(1, "sigsuspend");
-        } // could be an if statement but the kernel seems not to like it
+        }
 
         // unblock signals
         if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
@@ -256,11 +256,11 @@ void parent_main_loop(env_t *env) {
             alert(1, "sigprocmask on mask block");
 
         // wait for signal
-        while (!received) {
+        if (!received) {
             sigsuspend(&empty);
             if (errno != EINTR)
                 alert(1, "sigsuspend");
-        } // could be an if statement but the kernel seems not to like it
+        }
 
         // unblock signals
         if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
