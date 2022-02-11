@@ -197,6 +197,9 @@ void child_main_loop(void) {
             fprintf(stdout, "SURP - process %d\n", id);
             fflush(stdout);
 
+            if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
+                alert(1, "sigprocmask on mask block");
+
             while (status == 1) {
                 if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
                     alert(1, "sigprocmask on mask unblock");
@@ -204,6 +207,9 @@ void child_main_loop(void) {
                 if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
                     alert(1, "sigprocmask on mask block");
             }
+
+            if (sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1)
+                alert(1, "sigprocmask on mask unblock");
 
             CHK(kill(getppid(), SIGUSR1));
             break;
