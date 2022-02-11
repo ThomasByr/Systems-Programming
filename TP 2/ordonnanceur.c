@@ -42,6 +42,7 @@ struct env_s {
     pid_t *pids;      // array of pids
     int nb_processes; // number of processes
 };
+// holds the parent process needed information
 typedef struct env_s env_t;
 
 // global variables
@@ -83,6 +84,8 @@ void env_init(env_t *env, long qt, pid_t *pids, int nb_processes) {
  * @brief generic function to handle signals for the child processes
  *
  * @param sig signal number received
+ * @note because of the way signals are received, we can't receive more than one
+ * signal at a time so a single variable is used to store the signal
  */
 void child_sig_handler(int sig) {
     received = 1;
@@ -145,6 +148,11 @@ void child_on_exit(void) {
 /**
  * @brief sleep(1)
  *
+ * @note this function has a major flow which is that we can receive a signal
+ * just in between the sleep(1) call and the signal being blocked or unblocked
+ * which will result in an additional sleep(1) call
+ * we can resolve this by calling sleep with an arbitrary large value so that we
+ * only sleep once, during which we "should" receive a signal properly
  */
 void do_something(void) { sleep(1); }
 
