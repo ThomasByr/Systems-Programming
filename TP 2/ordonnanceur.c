@@ -329,15 +329,16 @@ int main(int argc, char *argv[]) {
 
     pid_t pid;
     int n = argc - 2;
+    char *endptr;
 
     // check number of arguments
     if (n <= 0)
-        alert(0, "usage: %s <t> t1 [t2] [t3] ...", argv[0]);
+        alert(0, "usage: %s <t> t0 [t1] [t2] ...", argv[0]);
 
     // check for values
-    long t = strtol(argv[1], NULL, 10);
-    if (t <= 0)
-        alert(0, "t must be a positive integer");
+    long t = strtol(argv[1], &endptr, 10);
+    if (endptr == argv[1] || *endptr != '\0' || t <= 0)
+        alert(0, "bad quantum value: %s", argv[1]);
 
     // array that holds each process time to be used in the scheduler
     long *t_array = malloc(sizeof(long) * n);
@@ -351,10 +352,11 @@ int main(int argc, char *argv[]) {
 
     // check for values
     for (int i = 2; i < argc; i++) {
-        long ti = strtol(argv[i], NULL, 10);
-        if (ti <= 0) {
+        long ti = strtol(argv[i], &endptr, 10);
+        if (endptr == argv[i] || *endptr != '\0' || ti <= 0) {
             free(t_array);
-            alert(0, "t%d must be a positive integer", i);
+            free(pid_array);
+            alert(0, "bad format or value for t%d : %s", i - 2, argv[i]);
         }
         t_array[i - 2] = ti;
     }
