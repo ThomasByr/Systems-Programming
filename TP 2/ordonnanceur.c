@@ -404,7 +404,7 @@ int main(int argc, char *argv[]) {
     parent_main_loop(&env);
 
     // we already registered terminated processes with wait in the parent main
-    // loop so we can just exit and free the remaining pid array
+    // loop so we can just exit and free the remaining pid array (once)
 
     // free
     free(pid_array);
