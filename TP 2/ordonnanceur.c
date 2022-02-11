@@ -150,7 +150,7 @@ void child_on_exit(void) {
  *
  * @note this function has a major flow which is that we can receive a signal
  * just in between the sleep(1) call and the signal being blocked or unblocked
- * which will result in an additional sleep(1) call
+ * which will result in an additional sleep(1) call ;
  * we can resolve this by calling sleep with an arbitrary large value so that we
  * only sleep once, during which we "should" receive a signal properly
  */
