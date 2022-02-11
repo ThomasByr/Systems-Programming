@@ -61,6 +61,9 @@ volatile int id = 0;             // id of the current process
 // globals for parent process
 
 volatile sig_atomic_t term_count = 0; // number of terminated child processes
+volatile sig_atomic_t tick = 0;       // tick received
+volatile sig_atomic_t donned = 0;     // child process stopped successfully
+volatile sig_atomic_t term = 0;       // child process terminated
 
 /**
  * @brief initialize the environment (process info and pids)
@@ -97,18 +100,24 @@ void child_sig_handler(int sig) {
  * @brief generic function to handle signals for the parent processes
  *
  * @param sig signal number received
+ * @note status is set to a non-zero value if we received a signal we want to
+ * process, the actual signal(s) (because we could receive more than 1 at a time
+ * trough the parent main loop) are recorded in some other global variables
  */
 void parent_sig_handler(int sig) {
     received = 1;
     switch (sig) {
     case SIGUSR1:
         status = 2; // [parent] record the pending process
+        donned = 1;
         break;
     case SIGALRM:
         status = 1; // [parent] send the process running
+        tick = 1;
         break;
     case SIGCHLD:
         status = 3; // [parent] record the terminated process
+        term++;
         break;
     }
 }
@@ -188,7 +197,6 @@ void child_main_loop(void) {
                     alert(1, "sigprocmask on mask block");
             }
 
-            status = 0;
             CHK(kill(getppid(), SIGUSR1));
             break;
         }
@@ -261,16 +269,17 @@ void parent_main_loop(env_t *env) {
         received = 0;
 
         // process the signal
-        switch (status) {
+        if (status == 0)
+            continue;
 
-        case 0: // do nothing
-            break;
-
-        case 1: // SIGALRM
+        // SIGALRM
+        if (tick) {
             CHK(kill(pids[index], SIGUSR2));
-            break;
+            tick = 0;
+        }
 
-        case 2: // SIGUSR1
+        // SIGUSR1
+        if (donned) {
             fprintf(stdout, "EVIP - process %d\n", index);
             fflush(stdout);
 
@@ -280,10 +289,12 @@ void parent_main_loop(env_t *env) {
                 count++;
                 index = (index + 1) % nb_p;
             } while (pids[index] == -1 && count < nb_p);
+            donned = 0;
             status = 0; // only reset here to send a process running
-            break;
+        }
 
-        case 3: // SIGCHLD
+        // SIGCHLD
+        while (term) {
             CHK((pid = wait(&exit_status)));
             k = set_term(pids, pid, nb_p);
             if (k == -1)
@@ -300,7 +311,7 @@ void parent_main_loop(env_t *env) {
                 alert(0, "child process %jd exited with status %d\n",
                       (intmax_t)pid, exit_code);
 
-            break;
+            term--; // terminate one process at a time if needed
         }
     }
 }
