@@ -8,6 +8,7 @@
    2. [gestion des processus](#gestion-des-processus)
    3. [gestion des signaux](#gestion-des-signaux)
    4. [TP 1](#tp-1)
+   5. [TP 2](#tp-2)
 3. [Contributing](#contributing)
 4. [Changelog and TODO](#changelog-and-todo)
 
@@ -44,6 +45,10 @@ This repo contains some elements of correction for diverse exercises and practic
 ### TP 1
 
 `compare.c` (similar behavior as `cmp` bash command)
+
+### TP 2
+
+`ordonnanceur.c` (dummy task scheduler for monothreaded cpu)
 
 ## Contributing
 
