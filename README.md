@@ -7,8 +7,9 @@
    1. [gestion de fichiers](#gestion-de-fichiers)
    2. [gestion des processus](#gestion-des-processus)
    3. [gestion des signaux](#gestion-des-signaux)
-   4. [TP 1](#tp-1)
-   5. [TP 2](#tp-2)
+   4. [tubes](#tubes)
+   5. [TP 1](#tp-1)
+   6. [TP 2](#tp-2)
 3. [Contributing](#contributing)
 4. [Changelog and TODO](#changelog-and-todo)
 
@@ -41,6 +42,11 @@ This repo contains some elements of correction for diverse exercises and practic
 
 *  `count_signint.c` : 9.1
 *  `display_signal.c` : 9.3
+
+### tubes
+
+*  `copy.c` : 8.1
+*  `ps_eaux.c` : 8.4
 
 ### TP 1
 
