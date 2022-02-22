@@ -10,6 +10,7 @@
    4. [tubes](#tubes)
    5. [TP 1](#tp-1)
    6. [TP 2](#tp-2)
+   7. [TP 3](#tp-3)
 3. [Contributing](#contributing)
 4. [Changelog and TODO](#changelog-and-todo)
 
@@ -55,6 +56,10 @@ This repo contains some elements of correction for diverse exercises and practic
 ### TP 2
 
 `ordonnanceur.c` (dummy task scheduler for monothreaded cpu)
+
+### TP 3
+
+`reseau.c` (ethernet commuting simulation)
 
 ## Contributing
 
