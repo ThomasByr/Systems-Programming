@@ -110,11 +110,11 @@ int main(int argc, char *argv[]) {
         alert(0, "no_sta should be in [1, %d]", MAXSTA);
 
     int pipes[MAXSTA + 1][2];
-    for (long i = 0; i < no_sta + 1; i++) {
-        CHK(pipe(pipes[i]));
-    } // todo: do not create to many useless pipes
+    CHK(pipe(pipes[0])); // children -> parent
 
     for (long i = 1; i < no_sta + 1; i++) {
+        CHK(pipe(pipes[i])); // parent -> child
+
         switch (fork()) {
 
         case -1:
@@ -124,11 +124,9 @@ int main(int argc, char *argv[]) {
             // closing unused pipes
             CHK(close(pipes[0][0]));
             CHK(close(pipes[i][1]));
-            for (long j = 1; j < no_sta + 1; j++) {
-                if (j != i) {
-                    CHK(close(pipes[j][0]));
-                    CHK(close(pipes[j][1]));
-                }
+            for (long j = 1; j < i; j++) {
+                CHK(close(pipes[j][0]));
+                CHK(close(pipes[j][1]));
             }
 
             child_main(i, pipes[i][0], pipes[0][1]);
