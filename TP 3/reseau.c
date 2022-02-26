@@ -105,8 +105,9 @@ void child_main(int id, int in, int out) {
         // send (dest payload) to parent via pipe
         CHK(write(out, &info, sizeof(info)));
     }
-    if (n == -1)
+    if (n == -1) {
         alert(1, "reading from %s", filename);
+    }
 
     CHK(close(fd));
     CHK(close(out));
@@ -122,8 +123,9 @@ void child_main(int id, int in, int out) {
         fprintf(stdout, "\n");
         fflush(stdout);
     }
-    if (n == -1)
+    if (n == -1) {
         alert(1, "reading from parent");
+    }
 
     CHK(close(in));
 }
@@ -136,54 +138,56 @@ void child_main(int id, int in, int out) {
  * 3. Writes the packet to the destination station
  *
  * @param pipes the array of file descriptors of the pipes
- * @param no_sta the number of stations
+ * @param nb_sta the number of stations
  */
-void parent_main(int (*pipes)[2], long no_sta) {
-    // read no_sta (src dest payload) from all children
+void parent_main(int (*pipes)[2], long nb_sta) {
+    // read (src dest payload) from children
     struct info_s info;
     int n;
     while ((n = read(pipes[0][0], &info, sizeof(info))) > 0) {
         // send (src dest payload) dest children via pipes
         // if dest is undefined, send to all children except src
-        if (1 <= info.dest && info.dest <= no_sta) {
+        if (1 <= info.dest && info.dest <= nb_sta) {
             CHK(write(pipes[info.dest][1], &info, sizeof(info)));
         } else {
-            for (long j = 1; j < no_sta + 1; j++) {
+            for (long j = 1; j < nb_sta + 1; j++) {
                 if (j != info.src) {
                     CHK(write(pipes[j][1], &info, sizeof(info)));
                 }
             }
         }
     }
-    if (n == -1)
+    if (n == -1) {
         alert(1, "reading from children");
+    }
 
     CHK(close(pipes[0][0]));
-    for (long i = 1; i < no_sta + 1; i++) {
+    for (long i = 1; i < nb_sta + 1; i++) {
         CHK(close(pipes[i][1]));
     }
 }
 
 int main(int argc, char *argv[]) {
-    long no_sta; // number of stations
+    long nb_sta; // number of stations
 
-    if (argc != 2)
-        alert(0, "usage: %s <no_sta>", argv[0]);
+    if (argc != 2) {
+        alert(0, "usage: %s <nb_sta>", argv[0]);
+    }
 
     char *endptr;
-    no_sta = strtol(argv[1], &endptr, 10);
+    nb_sta = strtol(argv[1], &endptr, 10);
     if (endptr == argv[1] || *endptr != '\0') {
-        alert(1, "no_sta is not a number");
+        alert(1, "nb_sta is not a number");
     }
     if (errno == ERANGE)
-        alert(1, "no_sta out of range [%ld, %ld]", LONG_MIN, LONG_MAX);
-    if (no_sta < 1 || no_sta > MAXSTA)
-        alert(0, "no_sta should be in [1, %d]", MAXSTA);
+        alert(1, "nb_sta out of range [%ld, %ld]", LONG_MIN, LONG_MAX);
+    if (nb_sta < 1 || nb_sta > MAXSTA)
+        alert(0, "nb_sta should be in [1, %d]", MAXSTA);
 
     int pipes[MAXSTA + 1][2];
     CHK(pipe(pipes[0])); // children -> parent
 
-    for (long i = 1; i < no_sta + 1; i++) {
+    for (long i = 1; i < nb_sta + 1; i++) {
         CHK(pipe(pipes[i])); // parent -> child
 
         switch (fork()) {
@@ -210,17 +214,17 @@ int main(int argc, char *argv[]) {
 
     // closing unused pipes for parent before calling parent_main
     CHK(close(pipes[0][1]));
-    for (long i = 1; i < no_sta + 1; i++) {
+    for (long i = 1; i < nb_sta + 1; i++) {
         CHK(close(pipes[i][0]));
     }
 
     // calling parent_main
     // this function will close all pipes before exiting
-    parent_main(pipes, no_sta);
+    parent_main(pipes, nb_sta);
 
     // wait for all children
     int status, exit_status = EXIT_SUCCESS;
-    for (long i = 1; i < no_sta + 1; i++) {
+    for (long i = 1; i < nb_sta + 1; i++) {
         CHK(wait(&status));
 
         if (WIFEXITED(status) && WEXITSTATUS(status) != EXIT_SUCCESS) {
