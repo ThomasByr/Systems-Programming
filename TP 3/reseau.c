@@ -70,21 +70,25 @@ void child_main(int id, int in, int out) {
         CHK(write(out, &info, sizeof(info)));
     }
     if (n == -1)
-        alert(1, "read");
+        alert(1, "reading from %s", filename);
 
     CHK(close(fd));
     CHK(close(out));
 
+    size_t k;
     while ((n = read(in, &info, sizeof(info))) > 0) {
         // wait for parent to send back (src dest payload)
         // print (id - src - dest - payload)
         fprintf(stdout, "%d - %d - %d - ", id, info.src, info.dest);
-        fwrite(info.payload, STDOUT_FILENO, PAYLOAD_SIZE, stdout);
+        k = fwrite(info.payload, STDOUT_FILENO, PAYLOAD_SIZE, stdout);
+        if (k != PAYLOAD_SIZE)
+            alert(1, "fwrite ended with %zu", k);
+
         fprintf(stdout, "\n");
         fflush(stdout);
     }
     if (n == -1)
-        alert(1, "read");
+        alert(1, "reading from parent");
 
     CHK(close(in));
 }
@@ -158,7 +162,7 @@ int main(int argc, char *argv[]) {
         }
     }
     if (n == -1)
-        alert(1, "read");
+        alert(1, "reading from children");
 
     CHK(close(pipes[0][0]));
     for (long i = 1; i < no_sta + 1; i++) {
