@@ -7,9 +7,13 @@ stations.
 The main issue of this program is that the stations all write to the commutator
 at the same time and on the same file descriptor. This is not a problem for
 the commutator, but it is a problem for the stations (the stations must be
-able to read from the commutator at the same time though). The solution is to
-use a semaphore to protect the commutator from the stations (that or either to
-use signals to protect the stations from writing all at the same time).
+able to read from the commutator at the same time though). For example, if
+the task scheduler forces a child process to quit before it has finished
+writing to the commutator, the pipe will be left in an inconsistent state.
+
+The solution could be to use a semaphore to protect the commutator from the
+stations (that or either to use signals to protect the stations from writing all
+at the same time).
 */
 
 #include <dirent.h>
