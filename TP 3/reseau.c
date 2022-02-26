@@ -97,7 +97,8 @@ void child_main(int id, int in, int out) {
 
     // format : (dest payload)
     while ((n = read(fd, &sta, sizeof(sta))) > 0) {
-        info.src = id;
+        // decode
+        info.src = id; // here, decoding is adding the source station
         info.dest = sta.dest;
         strncpy(info.payload, sta.payload, PAYLOAD_SIZE);
 
@@ -142,10 +143,8 @@ void parent_main(int (*pipes)[2], long no_sta) {
     struct info_s info;
     int n;
     while ((n = read(pipes[0][0], &info, sizeof(info))) > 0) {
-
         // send (src dest payload) dest children via pipes
         // if dest is undefined, send to all children except src
-
         if (1 <= info.dest && info.dest <= no_sta) {
             CHK(write(pipes[info.dest][1], &info, sizeof(info)));
         } else {
