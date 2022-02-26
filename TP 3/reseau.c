@@ -54,17 +54,33 @@ noreturn void alert(int syserr, const char *msg, ...) {
     exit(EXIT_FAILURE);
 }
 
+/// structure that holds the raw data of a packet
 struct sta_s {
-    int dest;
-    char payload[PAYLOAD_SIZE];
+    int dest;                   // destination station
+    char payload[PAYLOAD_SIZE]; // payload
 };
 
+/// structure that holds the data of a packet after it has been decoded
 struct info_s {
-    int src;
-    int dest;
-    char payload[PAYLOAD_SIZE];
+    int src;                    // source station
+    int dest;                   // destination station
+    char payload[PAYLOAD_SIZE]; // payload
 };
 
+/**
+ * @brief child process that simulates a station
+ *
+ * 1. Reads packets from a file
+ * 2. Decodes the packets
+ * 3. Writes the packets to the commutator
+ * 4. Waits for the commutator to read the packets
+ * 5. Reads new packets from the commutator
+ * 6. Writes the new packets to a file (standard output)
+ *
+ * @param id the id of the station
+ * @param in the file descriptor of the pipe to read from
+ * @param out the file descriptor of the pipe to write to
+ */
 void child_main(int id, int in, int out) {
     size_t k;
     int fd, n;
@@ -107,7 +123,17 @@ void child_main(int id, int in, int out) {
     CHK(close(in));
 }
 
-int parent_main(int (*pipes)[2], long no_sta) {
+/**
+ * @brief function that simulates a commutator
+ *
+ * 1. Reads packets from a pipe
+ * 2. Determine the destination of the packet
+ * 3. Writes the packet to the destination station
+ *
+ * @param pipes the array of file descriptors of the pipes
+ * @param no_sta the number of stations
+ */
+void parent_main(int (*pipes)[2], long no_sta) {
     // read no_sta (src dest payload) from all children
     struct info_s info;
     int n;
@@ -133,17 +159,6 @@ int parent_main(int (*pipes)[2], long no_sta) {
     for (long i = 1; i < no_sta + 1; i++) {
         CHK(close(pipes[i][1]));
     }
-
-    // wait for all children
-    int status, exit_status = EXIT_SUCCESS;
-    for (long i = 1; i < no_sta + 1; i++) {
-        CHK(wait(&status));
-
-        if (WIFEXITED(status) && WEXITSTATUS(status) != EXIT_SUCCESS) {
-            exit_status = EXIT_FAILURE;
-        }
-    }
-    return exit_status;
 }
 
 int main(int argc, char *argv[]) {
@@ -182,6 +197,8 @@ int main(int argc, char *argv[]) {
                 CHK(close(pipes[j][1]));
             }
 
+            // calling child_main
+            // this function will close all pipes before exiting
             child_main(i, pipes[i][0], pipes[0][1]);
 
             exit(EXIT_SUCCESS);
@@ -194,5 +211,18 @@ int main(int argc, char *argv[]) {
         CHK(close(pipes[i][0]));
     }
 
-    return parent_main(pipes, no_sta);
+    // calling parent_main
+    // this function will close all pipes before exiting
+    parent_main(pipes, no_sta);
+
+    // wait for all children
+    int status, exit_status = EXIT_SUCCESS;
+    for (long i = 1; i < no_sta + 1; i++) {
+        CHK(wait(&status));
+
+        if (WIFEXITED(status) && WEXITSTATUS(status) != EXIT_SUCCESS) {
+            exit_status = EXIT_FAILURE;
+        }
+    }
+    return exit_status;
 }
