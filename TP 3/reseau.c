@@ -11,9 +11,8 @@ able to read from the commutator at the same time though). For example, if
 the task scheduler forces a child process to quit before it has finished
 writing to the commutator, the pipe will be left in an inconsistent state.
 
-The solution could be to use a semaphore to protect the commutator from the
-stations (that or either to use signals to protect the stations from writing all
-at the same time).
+Additional note
+Pipes are closed before (not after) any function jump as an arbitrary choice.
 */
 
 #include <dirent.h>
@@ -35,6 +34,7 @@ at the same time).
 #include <unistd.h>
 #include <wait.h>
 
+#define PATH 1 << 8
 #define MAXSTA 10u
 #define PAYLOAD_SIZE 4ul
 
@@ -86,13 +86,16 @@ struct info_s {
  * @param out the file descriptor of the pipe to write to
  */
 void child_main(int id, int in, int out) {
-    size_t k;
-    int fd, n;
-    char filename[10];
+    int fd, n, i;
+    char filename[PATH];
     struct sta_s sta;
     struct info_s info;
 
-    sprintf(filename, "STA_%d", id);
+    i = snprintf(filename, PATH, "STA_%d", id);
+    if (i < 0 || i >= PATH) {
+        alert(0, "snprintf");
+    }
+
     CHK((fd = open(filename, O_RDONLY)));
 
     // format : (dest payload)
@@ -115,13 +118,17 @@ void child_main(int id, int in, int out) {
     while ((n = read(in, &info, sizeof(info))) > 0) {
         // wait for parent to send back (src dest payload)
         // print (id - src - dest - payload)
-        fprintf(stdout, "%d - %d - %d - ", id, info.src, info.dest);
-        k = fwrite(info.payload, STDOUT_FILENO, PAYLOAD_SIZE, stdout);
-        if (k != PAYLOAD_SIZE)
-            alert(1, "fwrite ended with %zu", k);
+        char payload[PAYLOAD_SIZE + 1];
+        strncpy(payload, info.payload, PAYLOAD_SIZE);
+        payload[PAYLOAD_SIZE] = '\0';
+        fprintf(stdout, "%d - %d - %d - %s\n", id, info.src, info.dest,
+                payload);
 
-        fprintf(stdout, "\n");
-        fflush(stdout);
+        // this is needed to avoid a mix of stdout and stderr in the terminal
+        i = fflush(stdout);
+        if (i != 0) {
+            alert(1, "fflush");
+        }
     }
     if (n == -1) {
         alert(1, "reading from parent");
@@ -137,22 +144,22 @@ void child_main(int id, int in, int out) {
  * 2. Determine the destination of the packet
  * 3. Writes the packet to the destination station
  *
- * @param pipes the array of file descriptors of the pipes
+ * @param pipesdes the array of file descriptors of the pipes int(*)[2]
  * @param nb_sta the number of stations
  */
-void parent_main(int (*pipes)[2], long nb_sta) {
+void parent_main(int pipesdes[MAXSTA + 1][2], long nb_sta) {
     // read (src dest payload) from children
-    struct info_s info;
     int n;
-    while ((n = read(pipes[0][0], &info, sizeof(info))) > 0) {
+    struct info_s info;
+    while ((n = read(pipesdes[0][0], &info, sizeof(info))) > 0) {
         // send (src dest payload) dest children via pipes
         // if dest is undefined, send to all children except src
         if (1 <= info.dest && info.dest <= nb_sta) {
-            CHK(write(pipes[info.dest][1], &info, sizeof(info)));
+            CHK(write(pipesdes[info.dest][1], &info, sizeof(info)));
         } else {
             for (long j = 1; j < nb_sta + 1; j++) {
                 if (j != info.src) {
-                    CHK(write(pipes[j][1], &info, sizeof(info)));
+                    CHK(write(pipesdes[j][1], &info, sizeof(info)));
                 }
             }
         }
@@ -161,9 +168,9 @@ void parent_main(int (*pipes)[2], long nb_sta) {
         alert(1, "reading from children");
     }
 
-    CHK(close(pipes[0][0]));
+    CHK(close(pipesdes[0][0]));
     for (long i = 1; i < nb_sta + 1; i++) {
-        CHK(close(pipes[i][1]));
+        CHK(close(pipesdes[i][1]));
     }
 }
 
@@ -179,16 +186,20 @@ int main(int argc, char *argv[]) {
     if (endptr == argv[1] || *endptr != '\0') {
         alert(1, "nb_sta is not a number");
     }
-    if (errno == ERANGE)
+    if (errno == ERANGE) {
         alert(1, "nb_sta out of range [%ld, %ld]", LONG_MIN, LONG_MAX);
-    if (nb_sta < 1 || nb_sta > MAXSTA)
+    }
+    if (nb_sta < 1 || nb_sta > MAXSTA) {
         alert(0, "nb_sta should be in [1, %d]", MAXSTA);
+    }
 
-    int pipes[MAXSTA + 1][2];
-    CHK(pipe(pipes[0])); // children -> parent
+    // pipesdes[0] is the common shared pipe
+    // pipesdes[i] is the pipe to the i-th station, i = 1..nb_sta
+    int pipesdes[MAXSTA + 1][2];
+    CHK(pipe(pipesdes[0])); // children -> parent
 
     for (long i = 1; i < nb_sta + 1; i++) {
-        CHK(pipe(pipes[i])); // parent -> child
+        CHK(pipe(pipesdes[i])); // parent -> child
 
         switch (fork()) {
 
@@ -197,30 +208,30 @@ int main(int argc, char *argv[]) {
 
         case 0:
             // closing unused pipes before calling child_main
-            CHK(close(pipes[0][0]));
-            CHK(close(pipes[i][1]));
+            CHK(close(pipesdes[0][0]));
+            CHK(close(pipesdes[i][1]));
             for (long j = 1; j < i; j++) {
-                CHK(close(pipes[j][0]));
-                CHK(close(pipes[j][1]));
+                CHK(close(pipesdes[j][0]));
+                CHK(close(pipesdes[j][1]));
             }
 
             // calling child_main
             // this function will close all pipes before exiting
-            child_main(i, pipes[i][0], pipes[0][1]);
+            child_main(i, pipesdes[i][0], pipesdes[0][1]);
 
             exit(EXIT_SUCCESS);
         }
     }
 
     // closing unused pipes for parent before calling parent_main
-    CHK(close(pipes[0][1]));
+    CHK(close(pipesdes[0][1]));
     for (long i = 1; i < nb_sta + 1; i++) {
-        CHK(close(pipes[i][0]));
+        CHK(close(pipesdes[i][0]));
     }
 
     // calling parent_main
     // this function will close all pipes before exiting
-    parent_main(pipes, nb_sta);
+    parent_main(pipesdes, nb_sta);
 
     // wait for all children
     int status, exit_status = EXIT_SUCCESS;
