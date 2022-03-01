@@ -4,15 +4,19 @@ Small program to simulate a ethernet network of some stations connected via a
 commutator. The parent process is the commutator, the child processes are the
 stations.
 
-The main issue of this program is that the stations all write to the commutator
-at the same time and on the same file descriptor. This is not a problem for
-the commutator, but it is a problem for the stations (the stations must be
-able to read from the commutator at the same time though). For example, if
-the task scheduler forces a child process to quit before it has finished
-writing to the commutator, the pipe will be left in an inconsistent state.
+The main issue of this program is that the pipes can reach their maximum size
+before the child process can read them.
+
+For example, let's say we have n+1 stations (s0, s1, ..., sn), where n is an
+arbitrary non-null number. Let's also assume that all stations want to send m
+messages to s0, and that s0 wants to send m^n messages in total, m being an
+arbitrary large number. s1, s2, ..., sn will write to the common pipe, which
+the commutator process will read. The commutator process will then send the
+messages to s0. Meanwhile, s0 should still be reading its own file, and thus
+will not be able to read the messages from the commutator.
 
 Additional note
-Pipes are closed before (not after) any function jump as an arbitrary choice.
+Pipes are closed before (not after) any function jump, as an arbitrary choice.
 */
 
 #include <dirent.h>
