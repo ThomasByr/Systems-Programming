@@ -11,6 +11,8 @@
    5. [TP 1](#tp-1)
    6. [TP 2](#tp-2)
    7. [TP 3](#tp-3)
+   8. [sujet 2021](#sujet-2021)
+   9. [sujet 2020](#sujet-2020)
 3. [Contributing](#contributing)
 4. [Changelog and TODO](#changelog-and-todo)
 
@@ -60,6 +62,14 @@ This repo contains some elements of correction for diverse exercises and practic
 ### TP 3
 
 `reseau.c` (ethernet commuting simulation)
+
+### sujet 2021
+
+`xargexec.c` multi instance exec with optional arguments
+
+### sujet 2020
+
+`roulette.c` game
 
 ## Contributing
 
